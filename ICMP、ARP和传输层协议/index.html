@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    <meta name="author" content="liaozehao">
+
+
+
+    <meta name="description" content="个人博客  廖泽豪">
+
+
+
+<title>ICMP、ARP和传输层协议 | My blog</title>
+
+
+
+    <link rel="icon" href="/favicon.ico">
+
+
+
+
+    <!-- stylesheets list from _config.yml -->
+    
+    <link rel="stylesheet" href="/css/style.css">
+    
+
+
+
+    <!-- scripts list from _config.yml -->
+    
+    <script src="/js/script.js"></script>
+    
+    <script src="/js/tocbot.min.js"></script>
+    
+
+
+
+    
+    
+        
+    
+
+
+<meta name="generator" content="Hexo 5.2.0"></head>
+<body>
+    <div class="wrapper">
+        <header>
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-header header-logo"><a href="/">Liaozehao&#39;s Blog</a></div>
+            <div class="menu navbar-right">
+                
+                    <a class="menu-item" href="/archives">Posts</a>
+                
+                    <a class="menu-item" href="/tag">Tags</a>
+                
+                    <a class="menu-item" href="/about">About</a>
+                
+                <input id="switch_default" type="checkbox" class="switch_default">
+                <label for="switch_default" class="toggleBtn"></label>
+            </div>
+        </div>
+    </nav>
+
+    
+    <nav class="navbar-mobile" id="nav-mobile">
+        <div class="container">
+            <div class="navbar-header">
+                <div>
+                    <a href="/">Liaozehao&#39;s Blog</a><a id="mobile-toggle-theme">·&nbsp;Light</a>
+                </div>
+                <div class="menu-toggle" onclick="mobileBtn()">&#9776; Menu</div>
+            </div>
+            <div class="menu" id="mobile-menu">
+                
+                    <a class="menu-item" href="/archives">Posts</a>
+                
+                    <a class="menu-item" href="/tag">Tags</a>
+                
+                    <a class="menu-item" href="/about">About</a>
+                
+            </div>
+        </div>
+    </nav>
+
+</header>
+<script>
+    var mobileBtn = function f() {
+        var toggleMenu = document.getElementsByClassName("menu-toggle")[0];
+        var mobileMenu = document.getElementById("mobile-menu");
+        if(toggleMenu.classList.contains("active")){
+           toggleMenu.classList.remove("active")
+            mobileMenu.classList.remove("active")
+        }else{
+            toggleMenu.classList.add("active")
+            mobileMenu.classList.add("active")
+        }
+    }
+</script>
+        <div class="main">
+            <div class="container">
+    
+    
+        <div class="post-toc">
+    <div class="tocbot-list">
+    </div>
+    <div class="tocbot-list-menu">
+        <a class="tocbot-toc-expand" onclick="expand_toc()">Expand all</a>
+        <a onclick="go_top()">Back to top</a>
+        <a onclick="go_bottom()">Go to bottom</a>
+    </div>
+</div>
+
+<script>
+    document.ready(
+        function () {
+            tocbot.init({
+                tocSelector: '.tocbot-list',
+                contentSelector: '.post-content',
+                headingSelector: 'h1, h2, h3, h4, h5',
+                collapseDepth: 1,
+                orderedList: false,
+                scrollSmooth: true,
+            })
+        }
+    )
+
+    function expand_toc() {
+        var b = document.querySelector(".tocbot-toc-expand");
+        tocbot.init({
+            tocSelector: '.tocbot-list',
+            contentSelector: '.post-content',
+            headingSelector: 'h1, h2, h3, h4, h5',
+            collapseDepth: 6,
+            orderedList: false,
+            scrollSmooth: true,
+        });
+        b.setAttribute("onclick", "collapse_toc()");
+        b.innerHTML = "Collapse all"
+    }
+
+    function collapse_toc() {
+        var b = document.querySelector(".tocbot-toc-expand");
+        tocbot.init({
+            tocSelector: '.tocbot-list',
+            contentSelector: '.post-content',
+            headingSelector: 'h1, h2, h3, h4, h5',
+            collapseDepth: 1,
+            orderedList: false,
+            scrollSmooth: true,
+        });
+        b.setAttribute("onclick", "expand_toc()");
+        b.innerHTML = "Expand all"
+    }
+
+    function go_top() {
+        window.scrollTo(0, 0);
+    }
+
+    function go_bottom() {
+        window.scrollTo(0, document.body.scrollHeight);
+    }
+
+</script>
+    
+
+    
+    <article class="post-wrap">
+        <header class="post-header">
+            <h1 class="post-title">ICMP、ARP和传输层协议</h1>
+            
+                <div class="post-meta">
+                    
+                        Author: <a itemprop="author" rel="author" href="/">liaozehao</a>
+                    
+
+                    
+                        <span class="post-time">
+                        Date: <a href="#">十二月 4, 2020&nbsp;&nbsp;20:22:50</a>
+                        </span>
+                    
+                    
+                </div>
+            
+        </header>
+
+        <div class="post-content">
+            <h3 id="ICMP"><a href="#ICMP" class="headerlink" title="ICMP"></a>ICMP</h3><p><strong>简介</strong></p>
+<p>ICMP（Internet Control Message Protocol）Internet控制报文协议。它是TCP/IP协议簇的一个子协议，用于在IP主机、路由器之间传递控制消息。控制消息是指网络通不通、主机是否可达、路由是否可用等网络本身的消息。这些控制消息虽然并不传输用户数据，但是对于用户数据的传递起着重要的作用。 </p>
+<p><strong>ICMP数据包格式</strong></p>
+<img src="https://bkimg.cdn.bcebos.com/pic/d52a2834349b033bb56a90761bce36d3d439bdb8?x-bce-process=image/watermark,image_d2F0ZXIvYmFpa2U5Mg==,g_7,xp_5,yp_5" alt="alt" style="zoom:50%;" />
+
+<p><strong>ICMP类型</strong></p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>TYPE</td>
+<td>CODE</td>
+<td>Description</td>
+<td>Query</td>
+<td>Error</td>
+</tr>
+<tr>
+<td>0</td>
+<td>0</td>
+<td>Echo Reply——回显应答（Ping应答）</td>
+<td>x</td>
+<td></td>
+</tr>
+<tr>
+<td>3</td>
+<td>0</td>
+<td>Network Unreachable——网络不可达</td>
+<td></td>
+<td>x</td>
+</tr>
+<tr>
+<td>3</td>
+<td>1</td>
+<td>Host Unreachable——主机不可达</td>
+<td></td>
+<td>x</td>
+</tr>
+<tr>
+<td>3</td>
+<td>2</td>
+<td>Protocol Unreachable——协议不可达</td>
+<td></td>
+<td>x</td>
+</tr>
+<tr>
+<td>3</td>
+<td>3</td>
+<td>Port Unreachable——端口不可达</td>
+<td></td>
+<td>x</td>
+</tr>
+<tr>
+<td>3</td>
+<td>4</td>
+<td>Fragmentation needed but no frag. bit set——需要进行分片但设置不分片比特</td>
+<td></td>
+<td>x</td>
+</tr>
+<tr>
+<td>3</td>
+<td>5</td>
+<td>Source routing failed——源站选路失败</td>
+<td></td>
+<td>x</td>
+</tr>
+<tr>
+<td>3</td>
+<td>6</td>
+<td>Destination network unknown——目的网络未知</td>
+<td></td>
+<td>x</td>
+</tr>
+<tr>
+<td>3</td>
+<td>7</td>
+<td>Destination host unknown——目的主机未知</td>
+<td></td>
+<td>x</td>
+</tr>
+<tr>
+<td>3</td>
+<td>8</td>
+<td>Source host isolated (obsolete)——源主机被隔离（作废不用）</td>
+<td></td>
+<td>x</td>
+</tr>
+<tr>
+<td>3</td>
+<td>9</td>
+<td>Destination network administratively prohibited——目的网络被强制禁止</td>
+<td></td>
+<td>x</td>
+</tr>
+<tr>
+<td>3</td>
+<td>10</td>
+<td>Destination host administratively prohibited——目的主机被强制禁止</td>
+<td></td>
+<td>x</td>
+</tr>
+<tr>
+<td>3</td>
+<td>11</td>
+<td>Network unreachable for TOS——由于服务类型TOS，网络不可达</td>
+<td></td>
+<td>x</td>
+</tr>
+<tr>
+<td>3</td>
+<td>12</td>
+<td>Host unreachable for TOS——由于服务类型TOS，主机不可达</td>
+<td></td>
+<td>x</td>
+</tr>
+<tr>
+<td>3</td>
+<td>13</td>
+<td>Communication administratively prohibited by filtering——由于过滤，通信被强制禁止</td>
+<td></td>
+<td>x</td>
+</tr>
+<tr>
+<td>3</td>
+<td>14</td>
+<td>Host precedence violation——主机越权</td>
+<td></td>
+<td>x</td>
+</tr>
+<tr>
+<td>3</td>
+<td>15</td>
+<td>Precedence cutoff in effect——优先中止生效</td>
+<td></td>
+<td>x</td>
+</tr>
+<tr>
+<td>4</td>
+<td>0</td>
+<td>Source quench——源端被关闭（基本流控制）</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>5</td>
+<td>0</td>
+<td>Redirect for network——对网络重定向</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>5</td>
+<td>1</td>
+<td>Redirect for host——对主机重定向</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>5</td>
+<td>2</td>
+<td>Redirect for TOS and network——对服务类型和网络重定向</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>5</td>
+<td>3</td>
+<td>Redirect for TOS and host——对服务类型和主机重定向</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>8</td>
+<td>0</td>
+<td>Echo request——回显请求（Ping请求）</td>
+<td>x</td>
+<td></td>
+</tr>
+<tr>
+<td>9</td>
+<td>0</td>
+<td>Router advertisement——路由器通告</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>10</td>
+<td>0</td>
+<td>Route solicitation——路由器请求</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>11</td>
+<td>0</td>
+<td>TTL equals 0 during transit——传输期间生存时间为0</td>
+<td></td>
+<td>x</td>
+</tr>
+<tr>
+<td>11</td>
+<td>1</td>
+<td>TTL equals 0 during reassembly——在数据报组装期间生存时间为0</td>
+<td></td>
+<td>x</td>
+</tr>
+<tr>
+<td>12</td>
+<td>0</td>
+<td>IP header bad (catchall error)——坏的IP首部（包括各种差错）</td>
+<td></td>
+<td>x</td>
+</tr>
+<tr>
+<td>12</td>
+<td>1</td>
+<td>Required options missing——缺少必需的选项</td>
+<td></td>
+<td>x</td>
+</tr>
+<tr>
+<td>13</td>
+<td>0</td>
+<td>Timestamp request (obsolete)——时间戳请求（作废不用）</td>
+<td>x</td>
+<td></td>
+</tr>
+<tr>
+<td>14</td>
+<td></td>
+<td>Timestamp reply (obsolete)——时间戳应答（作废不用）</td>
+<td>x</td>
+<td></td>
+</tr>
+<tr>
+<td>15</td>
+<td>0</td>
+<td>Information request (obsolete)——信息请求（作废不用）</td>
+<td>x</td>
+<td></td>
+</tr>
+<tr>
+<td>16</td>
+<td>0</td>
+<td>Information reply (obsolete)——信息应答（作废不用）</td>
+<td>x</td>
+<td></td>
+</tr>
+<tr>
+<td>17</td>
+<td>0</td>
+<td>Address mask request——地址掩码请求</td>
+<td>x</td>
+<td></td>
+</tr>
+<tr>
+<td>18</td>
+<td>0</td>
+<td>Address mask reply——地址掩码应答</td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+<p><strong>ICMP重定向</strong></p>
+<p>ICMP重定向报文是ICMP控制报文中的一种。在特定的情况下，当路由器检测到一台机器使用非优化路由的时候，它会向该主机发送一个ICMP重定向报文，请求主机改变路由。路由器也会把初始数据包向它的目的地转发。</p>
+<p>发生ICMP重定向通常有两种情况：</p>
+<p>1)当路由器从某个接口收到数据还需要从相同接口转发该数据时；</p>
+<p>2)当路由器从某个接口到发往远程网络的数据时发现源ip地址与下一跳属于同一网段时。</p>
+<h3 id="ARP协议"><a href="#ARP协议" class="headerlink" title="ARP协议"></a>ARP协议</h3><p><strong>简介</strong></p>
+<p>地址解析协议，即ARP（Address Resolution Protocol），是根据IP地址获取物理地址的一个TCP/IP协议。主机发送信息时将包含目标IP地址的ARP请求广播到局域网络上的所有主机，并接收返回消息，以此确定目标的物理地址；收到返回消息后将该IP地址和物理地址存入本机ARP缓存中并保留一定时间，下次请求时直接查询ARP缓存以节约资源。地址解析协议是建立在网络中各个主机互相信任的基础上的，局域网络上的主机可以自主发送ARP应答消息，其他主机收到应答报文时不会检测该报文的真实性就会将其记入本机ARP缓存；由此攻击者就可以向某一主机发送伪ARP应答报文，使其发送的信息无法到达预期的主机或到达错误的主机，这就构成了一个ARP欺骗。ARP命令可用于查询本机ARP缓存中IP地址和MAC地址的对应关系、添加或删除静态对应关系等。相关协议有RARP、代理ARP。NDP用于在IPv6中代替地址解析协议。</p>
+<p><strong>ARP报文格式</strong></p>
+<table>
+<thead>
+<tr>
+<th>硬件类型</th>
+<th>协议类型</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>硬件地址长度</td>
+<td>操作类型</td>
+</tr>
+<tr>
+<td>发送方硬件地址（0-3字节）</td>
+<td></td>
+</tr>
+<tr>
+<td>发送方硬件地址（4-5字节）</td>
+<td>发送方IP地址（0-1字节）</td>
+</tr>
+<tr>
+<td>发送方IP地址（2-3字节）</td>
+<td>目标硬件地址（0-1字节）</td>
+</tr>
+<tr>
+<td>目标硬件地址（2-5字节）</td>
+<td></td>
+</tr>
+<tr>
+<td>目标IP地址（0-3字节）</td>
+<td></td>
+</tr>
+</tbody></table>
+<p><strong>免费ARP</strong></p>
+<p>用来探测是否有重复IP</p>
+<h3 id="传输层协议"><a href="#传输层协议" class="headerlink" title="传输层协议"></a>传输层协议</h3><p><strong>TCP报文格式</strong></p>
+<p><img src="https://bkimg.cdn.bcebos.com/pic/eac4b74543a98226cffc2b383bcbae014a90f603bdd1?x-bce-process=image/watermark,image_d2F0ZXIvYmFpa2U5Mg==,g_7,xp_5,yp_5"></p>
+<p><strong>TCP三次握手</strong></p>
+<p><img src="https://blog.jiar.me/2017/08/11/TCP%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B%E7%AE%80%E4%BB%8B/tcp_hand_shake_detail.png" alt="img"></p>
+<p><strong>TCP四次挥手</strong></p>
+<p><img src="https://xujimmy.com/images/tcp-four-handshakes.jpg" alt="查看源图像"></p>
+<p><strong>UDP报文格式</strong></p>
+<p><img src="https://tse4-mm.cn.bing.net/th/id/OIP.y6oToU8u_qdkbxP8e0QLqAHaDf?pid=Api&rs=1" alt="查看源图像"></p>
+
+        </div>
+
+        
+            <section class="post-copyright">
+                
+                    <p class="copyright-item">
+                        <span>Author:</span>
+                        <span>liaozehao</span>
+                    </p>
+                
+                
+                    <p class="copyright-item">
+                        <span>Permalink:</span>
+                        <span><a href="http://liaozehao.cn/ICMP%E3%80%81ARP%E5%92%8C%E4%BC%A0%E8%BE%93%E5%B1%82%E5%8D%8F%E8%AE%AE/">http://liaozehao.cn/ICMP%E3%80%81ARP%E5%92%8C%E4%BC%A0%E8%BE%93%E5%B1%82%E5%8D%8F%E8%AE%AE/</a></span>
+                    </p>
+                
+                
+                    <p class="copyright-item">
+                        <span>License:</span>
+                        <span></span>
+                    </p>
+                
+                
+                     <p class="copyright-item">
+                         <span>Slogan:</span>
+                         <span>你好啊， <strong>大蠢蛋</strong>！</span>
+                     </p>
+                
+
+            </section>
+        
+        <section class="post-tags">
+            <div>
+                <span>Tag(s):</span>
+                <span class="tag">
+                    
+                    
+                        <a href="/tags/Cisco/"># Cisco</a>
+                    
+                        
+                </span>
+            </div>
+            <div>
+                <a href="javascript:window.history.back();">back</a>
+                <span>· </span>
+                <a href="/">home</a>
+            </div>
+        </section>
+        <section class="post-nav">
+            
+            
+            <a class="next" rel="next" href="/VSCODE%E5%B8%B8%E7%94%A8%E5%BF%AB%E6%8D%B7%E6%96%B9%E5%BC%8F/">VSCODE常用快捷方式</a>
+            
+        </section>
+
+
+    </article>
+</div>
+
+        </div>
+        <footer id="footer" class="footer">
+    <div class="copyright">
+        <span>© liaozehao | Powered by <a href="https://hexo.io" target="_blank">Hexo</a> & <a href="https://github.com/Siricee/hexo-theme-Chic" target="_blank">Chic</a></span>
+    </div>
+</footer>
+
+    </div>
+</body>
+</html>
